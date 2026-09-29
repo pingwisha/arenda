@@ -1,0 +1,11 @@
+{
+  "$schema": "https://app.kilo.ai/config.json",
+  "mcp": {
+    "google-workspace": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@thenavidm/google-workspace-mcp@latest"],
+      "enabled": true
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "mcpServers": {
+    "google-sheets-py": {
+      "command": "python",
+      "args": ["/path/to/server.py"],
+      "disabled": false,
+      "alwaysAllow": [
+        "get_sheet_data",
+        "list_sheets",
+        "list_spreadsheets"
+      ]
+    },
+    "google-sheets-docker": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "-e", "SERVICE_ACCOUNT_PATH=/app/service-account-key.json",
+        "-e", "DRIVE_FOLDER_ID=your-drive-folder-id-here",
+        "-e", "ENABLE_CREATE_TOOLS=false",
+        "-v", "$HOME/.config/gcp:/app/secrets:ro","C:/Users/UserName/.gemini/service-account-key.json:/app/service-account-key.json:ro",
+        "mcp-google-workspace-simple:latest"
+      ],
+      "disabled": false,
+      "alwaysAllow": [
+        "get_sheet_data",
+        "list_sheets",
+        "list_spreadsheets"
+      ]
+    }
+  }
+}

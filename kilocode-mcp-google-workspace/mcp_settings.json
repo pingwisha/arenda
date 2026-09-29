@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "google-workspace": {
+      "command": "C:/Users/maria/OneDrive/Документы/квартиры/kilocode-mcp-google-workspace/venv/Scripts/python.exe",
+      "args": [
+        "C:/Users/maria/OneDrive/Документы/квартиры/kilocode-mcp-google-workspace/server.py"
+      ],
+      "env": {
+        "GOOGLE_APPLICATION_CREDENTIALS": "C:/Users/maria/OneDrive/Документы/квартиры/kilocode-mcp-google-workspace/service-account-key.json",
+        "SPREADSHEET_ID": "1yXzUII6pZ9rg57C0c7gefl57z88uz1_mKlNBy8Nu4g0"
+      }
+    }
+  }
+}
