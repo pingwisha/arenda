@@ -7,5 +7,6 @@
       "args": ["-y", "@thenavidm/google-workspace-mcp@latest"],
       "enabled": true
     }
-  }
+  },
+  "snapshot": false
 }

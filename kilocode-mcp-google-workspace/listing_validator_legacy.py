@@ -1,38 +1,14 @@
+from __future__ import annotations
+
+import json
 import re
 import sys
-import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 WORKSPACE = Path(__file__).resolve().parent.parent
 
-
-def load_requirements() -> Dict[str, Any]:
-    must_have_path = WORKSPACE / "must_have.md"
-    nice_to_have_path = WORKSPACE / "nice_to_have.md"
-
-    def parse_md(path: Path) -> Dict[str, List[str]]:
-        sections: Dict[str, List[str]] = {}
-        current_section = ""
-        if not path.exists():
-            return sections
-        for line in path.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if not line or line.startswith("#"):
-                if line.startswith("## "):
-                    current_section = line.lstrip("# ").strip()
-                    sections[current_section] = []
-                continue
-            if line.startswith("- "):
-                item = line[2:].strip()
-                if current_section:
-                    sections.setdefault(current_section, []).append(item)
-        return sections
-
-    return {
-        "must_have": parse_md(must_have_path),
-        "nice_to_have": parse_md(nice_to_have_path),
-    }
+from requirements import Requirements, validate_requirements, _build_draft_message
 
 
 def fetch_page(url: str, timeout: int = 20000) -> str:
@@ -70,45 +46,6 @@ def is_cloudflare_blocked(html: str) -> bool:
         "идёт проверка",
         "проверка, что вы не бот",
     ])
-
-
-def check_must_have(text: str) -> Dict[str, Any]:
-    requirements = load_requirements()
-    must_have = requirements.get("must_have", {})
-    lower_text = text.lower()
-    result: Dict[str, Any] = {"passed": True, "missing": [], "prohibited": [], "details": {}}
-
-    prohibited_patterns = {
-        "собака": ["не допускаются животные", "без животных", "zabranjeni ljubimci", "bez ljubimaca", "nije dozvoljeno sa ljubimcima", "ljubimci nisu dozvoljeni", "bez psa", "bez mačke"],
-        "кот": ["не допускаются животные", "без животных", "zabranjeni ljubimci", "bez ljubimaca", "nije dozvoljeno sa ljubimcima", "ljubimci nisu dozvoljeni", "bez psa", "bez mačke"],
-        "плита": ["нема плин", "нема шпора", "nema ploču", "no stove", "bez ploče"],
-        "холодильник": ["нема фрижидера", "нема холодильник", "nema frižider", "no fridge"],
-        "стиральная машина": ["нема веш машину", "nema veš mašinu", "no washing machine"],
-        "горячая вода": ["нема топлу воду", "nema toplu vodu", "no hot water"],
-        "wi-fi": ["нема wifi", "нема интернет", "nema wifi", "no wifi"],
-    }
-
-    for section, items in must_have.items():
-        for item in items:
-            keywords = [kw.strip().lower() for kw in item.split("/")]
-            positive_hits = [kw for kw in keywords if kw and kw in lower_text]
-            prohibition_hits = []
-            for kw in keywords:
-                for pat in prohibited_patterns.get(kw, []):
-                    if pat in lower_text:
-                        prohibition_hits.append(pat)
-                        break
-
-            if prohibition_hits:
-                result["passed"] = False
-                result["prohibited"].append(f"{section}: {item}")
-                result["details"][f"{section}: {item}"] = "prohibited"
-            elif positive_hits:
-                result["details"][f"{section}: {item}"] = "present"
-            else:
-                result["details"][f"{section}: {item}"] = "unknown"
-                result["missing"].append(f"{section}: {item}")
-    return result
 
 
 def extract_listing_info(text: str) -> Dict[str, Any]:
@@ -194,26 +131,36 @@ def main() -> int:
     soup = BeautifulSoup(html, "html.parser")
     text = soup.get_text(" ", strip=True)
 
-    must_have = check_must_have(text)
+    validation = validate_requirements(text)
     extraction = extract_listing_info(text)
 
-    if must_have["passed"] and extraction["missing_to_ask"]:
+    missing_must = validation["missing_must_have"]
+    missing_nice = validation["missing_nice_to_have"]
+    prohibited = validation["prohibited"]
+    passed = len(prohibited) == 0
+
+    missing_to_ask = []
+    draft_message = ""
+    if passed and (missing_must or missing_nice):
+        draft_message, missing_to_ask = _build_draft_message(missing_must, missing_nice, "halooglasi.com")
+
+    if missing_to_ask:
         message_status = "pending_approval"
-    elif must_have["passed"]:
+    elif passed:
         message_status = "not_needed"
     else:
         message_status = "not_sent_must_have_failed"
 
     result = {
         "url": url,
-        "must_have_passed": must_have["passed"],
-        "missing_must_have": must_have["missing"],
-        "prohibited_must_have": must_have["prohibited"],
-        "unknown_must_have": must_have["missing"],
+        "must_have_passed": passed,
+        "missing_must_have": [f"{m['section']}: {m['item']}" for m in missing_must],
+        "prohibited_must_have": [f"{m['section']}: {m['item']}" for m in prohibited],
+        "unknown_must_have": [f"{m['section']}: {m['item']}" for m in missing_must],
         "extracted_info": extraction["extracted"],
-        "missing_to_ask": extraction["missing_to_ask"],
+        "missing_to_ask": missing_to_ask,
         "message_status": message_status,
-        "draft_message": extraction.get("draft_message", ""),
+        "draft_message": draft_message,
         "notes": ["halooglasi legacy parser"],
     }
 
