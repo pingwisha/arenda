@@ -117,6 +117,7 @@ def main() -> int:
 
     url = sys.argv[1]
     print(f"Fetching listing: {url}")
+
     html = fetch_page(url)
 
     if is_cloudflare_blocked(html):
@@ -134,15 +135,17 @@ def main() -> int:
     validation = validate_requirements(text)
     extraction = extract_listing_info(text)
 
-    missing_must = validation["missing_must_have"]
-    missing_nice = validation["missing_nice_to_have"]
+    missing_must = [item for item in validation["missing"] if item["category"] == "must_have"]
+    missing_nice = [item for item in validation["missing"] if item["category"] == "nice_to_have"]
+    present = validation["present"]
     prohibited = validation["prohibited"]
     passed = len(prohibited) == 0
 
-    missing_to_ask = []
-    draft_message = ""
     if passed and (missing_must or missing_nice):
-        draft_message, missing_to_ask = _build_draft_message(missing_must, missing_nice, "halooglasi.com")
+        draft_message, draft_questions, missing_to_ask = _build_draft_message(missing_must, missing_nice, "halooglasi.com")
+    else:
+        draft_questions = []
+        missing_to_ask = []
 
     if missing_to_ask:
         message_status = "pending_approval"
@@ -154,17 +157,24 @@ def main() -> int:
     result = {
         "url": url,
         "must_have_passed": passed,
+        "present_items": [f"{m['section']}: {m['item']}" for m in present],
         "missing_must_have": [f"{m['section']}: {m['item']}" for m in missing_must],
         "prohibited_must_have": [f"{m['section']}: {m['item']}" for m in prohibited],
         "unknown_must_have": [f"{m['section']}: {m['item']}" for m in missing_must],
+        "raw_listing_text": text,
         "extracted_info": extraction["extracted"],
         "missing_to_ask": missing_to_ask,
+        "draft_questions": draft_questions,
         "message_status": message_status,
         "draft_message": draft_message,
         "notes": ["halooglasi legacy parser"],
     }
 
-    print(json.dumps(result, ensure_ascii=False))
+    output = json.dumps(result, ensure_ascii=False)
+    try:
+        print(output)
+    except UnicodeEncodeError:
+        print(json.dumps(result, ensure_ascii=True))
     return 0
 
 

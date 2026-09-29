@@ -6,6 +6,26 @@
       "command": "npx",
       "args": ["-y", "@thenavidm/google-workspace-mcp@latest"],
       "enabled": true
+    },
+    "telegram": {
+      "type": "local",
+      "command": "uv",
+      "args": [
+        "--directory",
+        "C:\\Users\\Serezhka\\telegram-mcp",
+        "run",
+        "main.py"
+      ],
+      "enabled": true
+    },
+    "whatsapp-web": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["--no-deprecation", "C:\\Users\\Serezhka\\Documents\\Projects\\arenda\\whatsapp-mcp-web\\dist\\index.js"],
+      "env": {
+        "WHATSAPP_SESSION_DIR": "C:\\Users\\Serezhka\\Documents\\Projects\\arenda\\whatsapp-mcp-web\\whatsapp-sessions"
+      },
+      "enabled": true
     }
   },
   "snapshot": false

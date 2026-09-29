@@ -52,6 +52,9 @@ yarn.lock
 Thumbs.db
 desktop.ini
 
+# WhatsApp
+whatsapp-mcp-web/whatsapp-sessions/
+
 # Logs
 *.log
 npm-debug.log*

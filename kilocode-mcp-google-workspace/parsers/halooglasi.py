@@ -11,26 +11,31 @@ def validate(url: str) -> Dict[str, Any]:
     soup = BeautifulSoup(html, "html.parser")
     text = soup.get_text(" ", strip=True)
     result = validate_requirements(text)
-    missing_must = result["missing_must_have"]
-    missing_nice = result["missing_nice_to_have"]
+    missing_must = [item for item in result["missing"] if item["category"] == "must_have"]
+    missing_nice = [item for item in result["missing"] if item["category"] == "nice_to_have"]
+    present = result["present"]
     prohibited = result["prohibited"]
 
     passed = len(prohibited) == 0
-    missing_to_ask = []
-    draft_message = ""
 
     if passed and (missing_must or missing_nice):
-        draft_message, missing_to_ask = _build_draft_message(missing_must, missing_nice, "halooglasi.com")
+        draft_message, draft_questions, missing_to_ask = _build_draft_message(missing_must, missing_nice, "halooglasi.com")
+    else:
+        draft_questions = []
+        missing_to_ask = []
 
     return {
         "status": "ok",
         "site": "halooglasi.com",
         "url": url,
         "must_have_passed": passed,
+        "present_items": [f"{m['section']}: {m['item']}" for m in present],
         "missing_must_have": [f"{m['section']}: {m['item']}" for m in missing_must],
         "prohibited_must_have": [f"{m['section']}: {m['item']}" for m in prohibited],
+        "raw_listing_text": text,
         "extracted_info": {"text_snippet": text[:1000]},
         "missing_to_ask": missing_to_ask,
+        "draft_questions": draft_questions,
         "message_status": "pending_approval" if missing_to_ask else "not_needed",
         "draft_message": draft_message,
         "notes": ["halooglasi parser"],

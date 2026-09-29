@@ -124,68 +124,82 @@ def validate_requirements(text: str, requirements: Optional[Requirements] = None
     if requirements is None:
         requirements = Requirements()
     lower_text = text.lower()
-    missing_must = []
-    missing_nice = []
+    present = []
+    missing = []
+    unknown = []
     prohibited = []
     for req in requirements.get_items():
         hit = any(kw in lower_text for kw in req.keywords if kw)
         is_prohibited = any(pat in lower_text for pat in req.prohibited_patterns if pat)
         if is_prohibited:
             prohibited.append({"section": req.section, "item": req.item, "category": req.category, "reason": "prohibited"})
-        elif not hit:
-            if req.category == "must_have":
-                missing_must.append({"section": req.section, "item": req.item, "category": req.category})
-            else:
-                missing_nice.append({"section": req.section, "item": req.item, "category": req.category})
+        elif hit:
+            present.append({"section": req.section, "item": req.item, "category": req.category})
+        else:
+            missing.append({"section": req.section, "item": req.item, "category": req.category})
     return {
-        "missing_must_have": missing_must,
-        "missing_nice_to_have": missing_nice,
+        "present": present,
+        "missing": missing,
+        "unknown": unknown,
         "prohibited": prohibited,
         "passed": len(prohibited) == 0,
     }
 
 
-def _build_draft_message(missing_must: List[Dict[str, str]], missing_nice: List[Dict[str, str]], site: str) -> Tuple[str, List[str]]:
+def _build_draft_message(missing_must: List[Dict[str, str]], missing_nice: List[Dict[str, str]], site: str) -> Tuple[str, List[str], List[str]]:
     questions = []
     missing_to_ask = []
 
-    if any(item.get("item", "").lower() in ["коммуналка", "utilities", "коммуналка eur"] for item in missing_must):
-        questions.append("iznos komunala")
-        missing_to_ask.append("utilities_eur")
-    if any(item.get("item", "").lower() in ["собака", "кот", "животные", "pet friendly"] for item in missing_must + missing_nice):
-        questions.append("da li je dozvoljeno sa psom i mackom, i da li postoji naknada za zivotinje")
-        missing_to_ask.append("pet_fee_eur")
-    if any(item.get("item", "").lower() in ["плита", "кухня"] for item in missing_must + missing_nice):
-        questions.append("da li postoji kuhinja i plin/sporet")
-        missing_to_ask.append("appliances_info")
-    if any(item.get("item", "").lower() in ["холодильник"] for item in missing_must + missing_nice):
-        questions.append("da li postoji frižider")
-        if "appliances_info" not in missing_to_ask:
-            missing_to_ask.append("appliances_info")
-    if any(item.get("item", "").lower() in ["стиральная машина"] for item in missing_must + missing_nice):
-        questions.append("da li postoji veš mašina")
-        if "appliances_info" not in missing_to_ask:
-            missing_to_ask.append("appliances_info")
-    if any(item.get("item", "").lower() in ["горячая вода"] for item in missing_must + missing_nice):
-        questions.append("da li postoji topla voda")
-    if any(item.get("item", "").lower() in ["wi-fi", "интернет"] for item in missing_must + missing_nice):
-        questions.append("da li postoji wi-fi ili internet")
-    if any(item.get("item", "").lower() in ["посудомоечная машина"] for item in missing_must + missing_nice):
-        questions.append("da li postoji sudomašina")
-        if "appliances_info" not in missing_to_ask:
-            missing_to_ask.append("appliances_info")
-    if any(item.get("item", "").lower() in ["2 спальни", "спальни", "sobe", "bedrooms"] for item in missing_must + missing_nice):
-        questions.append("koliko spavaci sobe ima")
-    if any(item.get("item", "").lower() in ["3 кровати", "кровати", "beds", "лежај"] for item in missing_must + missing_nice):
-        questions.append("da li postoji lezaj ili krevet za sve osobe")
-        missing_to_ask.append("beds_info")
+    missing_items = missing_must + missing_nice
+
+    for item in missing_items:
+        item_name = item.get("item", "").lower()
+        if item_name in ["коммуналка", "utilities", "коммуналка eur"]:
+            questions.append("iznos komunala")
+            if "utilities_eur" not in missing_to_ask:
+                missing_to_ask.append("utilities_eur")
+        elif item_name in ["собака", "кот", "животные", "pet friendly"]:
+            if item_name == "собака":
+                questions.append("da li je dozvoljeno sa psom, i da li postoji naknada za zivotinje")
+            elif item_name == "кот":
+                questions.append("da li je dozvoljeno sa mačkom, i da li postoji naknada za zivotinje")
+            else:
+                questions.append("da li je dozvoljeno sa psom i mackom, i da li postoji naknada za zivotinje")
+            if "pet_fee_eur" not in missing_to_ask:
+                missing_to_ask.append("pet_fee_eur")
+        elif item_name in ["плита", "кухня"]:
+            questions.append("da li postoji kuhinja i plin/sporet")
+            if "appliances_info" not in missing_to_ask:
+                missing_to_ask.append("appliances_info")
+        elif item_name == "холодильник":
+            questions.append("da li postoji frižider")
+            if "appliances_info" not in missing_to_ask:
+                missing_to_ask.append("appliances_info")
+        elif item_name == "стиральная машина":
+            questions.append("da li postoji veš mašina")
+            if "appliances_info" not in missing_to_ask:
+                missing_to_ask.append("appliances_info")
+        elif item_name == "горячая вода":
+            questions.append("da li postoji topla voda")
+        elif item_name in ["wi-fi", "интернет"]:
+            questions.append("da li postoji wi-fi ili internet")
+        elif item_name == "посудомоечная машина":
+            questions.append("da li postoji sudomašina")
+            if "appliances_info" not in missing_to_ask:
+                missing_to_ask.append("appliances_info")
+        elif item_name in ["2 спальни", "спальни", "sobe", "bedrooms"]:
+            questions.append("koliko spavaci sobe ima")
+        elif item_name in ["3 кровати", "кровати", "beds", "лежај"]:
+            questions.append("da li postoji lezaj ili krevet za sve osobe")
+            if "beds_info" not in missing_to_ask:
+                missing_to_ask.append("beds_info")
 
     if not questions:
-        return "", []
+        return "", [], []
 
     draft_message = (
         "Zdravo, interesuje me ovaj stan. Mozete li da odgovorite na par pitanja: "
         + ", ".join(questions)
         + "? Hvala unapred."
     )
-    return draft_message, missing_to_ask
+    return draft_message, questions, missing_to_ask
